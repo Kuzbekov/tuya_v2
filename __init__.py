@@ -4,6 +4,7 @@
 import itertools
 import json
 import logging
+import base64
 from .aes_cbc import (
     AesCBC as Aes,
     XOR_KEY,
@@ -156,19 +157,62 @@ async def _init_tuya_sdk(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][TUYA_HOME_MANAGER] = home_manager
     
     def on_message_custom(msg):
-        _LOGGER.info(f"kuzb on_message_custom: {msg}")
+        _LOGGER.info(f"on_message_custom: {msg}")
         protocol = msg.get("protocol", 0)
         data = msg.get("data", {})
         if protocol == 4:
             devId=data["devId"]
             status=data["status"]
-            _LOGGER.info(f"kuzb _on_device_report_custom-> {devId}, {status}")
+            _LOGGER.info(f"_on_device_report_custom-> {devId}, {status}")
             for ha_device in hass.data[DOMAIN][TUYA_HA_DEVICES]:
                 if ha_device.tuya_device.id == devId:
-                    _LOGGER.debug(f"kuzb _update--> {ha_device.tuya_device.status}")
-                    ha_device.tuya_device.status["active_current_a"]=1
-                    ha_device.tuya_device.status["active_current_b"]=2
-                    ha_device.tuya_device.status["active_current_c"]=3
+                    _LOGGER.debug(f"message _update--> {status}")
+                    for statusItem in status:
+                        for statusNum in statusItem:
+                            _LOGGER.debug(f"message _update--> stsusnum {statusNum}")
+                            if statusNum == "102":                            
+                                _LOGGER.debug(f"message _update--> updating current data")
+                                hexStatus=base64.b64decode(statusItem[statusNum]).hex()
+                                _LOGGER.debug(f"message _update--> hexStatus {hexStatus}")
+                                a_sub = hexStatus[0:6]
+                                b_sub = hexStatus[6:12]
+                                c_sub = hexStatus[12:18]
+                                _LOGGER.debug(f"message _update--> a_sub {a_sub}")
+                                _LOGGER.debug(f"message _update--> b_sub {b_sub}")
+                                _LOGGER.debug(f"message _update--> c_sub {c_sub}")
+                                ha_device.tuya_device.status["phase_a_electricCurrent"]=int(a_sub,16)/1000
+                                ha_device.tuya_device.status["phase_b_electricCurrent"]=int(b_sub,16)/1000
+                                ha_device.tuya_device.status["phase_c_electricCurrent"]=int(c_sub,16)/1000
+                                _LOGGER.debug(f"message _update--> {ha_device.tuya_device.status}")
+                            elif statusNum=="101":
+                                _LOGGER.debug(f"message _update--> updating voltage data")
+                                hexStatus=base64.b64decode(statusItem[statusNum]).hex()
+                                _LOGGER.debug(f"message _update--> hexStatus {hexStatus}")
+                                a_sub = hexStatus[0:4]
+                                b_sub = hexStatus[4:8]
+                                c_sub = hexStatus[8:12]
+                                _LOGGER.debug(f"message _update--> a_sub {a_sub}")
+                                _LOGGER.debug(f"message _update--> b_sub {b_sub}")
+                                _LOGGER.debug(f"message _update--> c_sub {c_sub}")                                
+                                ha_device.tuya_device.status["phase_a_voltage"]=int(a_sub,16)/10
+                                ha_device.tuya_device.status["phase_b_voltage"]=int(b_sub,16)/10
+                                ha_device.tuya_device.status["phase_c_voltage"]=int(c_sub,16)/10
+                                _LOGGER.debug(f"message _update--> {ha_device.tuya_device.status}")
+                            elif statusNum=="103":
+                                _LOGGER.debug(f"message _update--> updating power data")
+                                hexStatus=base64.b64decode(statusItem[statusNum]).hex()
+                                _LOGGER.debug(f"message _update--> hexStatus {hexStatus}")
+                                total_sub=hexStatus[0:6]
+                                a_sub = hexStatus[6:12]
+                                b_sub = hexStatus[12:18]
+                                c_sub = hexStatus[18:24]
+                                _LOGGER.debug(f"message _update--> a_sub {a_sub}")
+                                _LOGGER.debug(f"message _update--> b_sub {b_sub}")
+                                _LOGGER.debug(f"message _update--> c_sub {c_sub}")
+                                ha_device.tuya_device.status["phase_a_power"]=int(a_sub,16)/10000
+                                ha_device.tuya_device.status["phase_b_power"]=int(b_sub,16)/10000
+                                ha_device.tuya_device.status["phase_c_power"]=int(c_sub,16)/10000
+                                _LOGGER.debug(f"message _update--> {ha_device.tuya_device.status}")
                     ha_device.schedule_update_ha_state()
     tuya_mq.add_message_listener(on_message_custom)
 

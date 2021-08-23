@@ -105,14 +105,6 @@ def _setup_entities(hass, device_ids: list):
         device = device_manager.device_map[device_id]
         if device is None:
             continue
-        if device.product_id=="aynmagfq01aq70he":
-            newentities =[
-                "active_current_a",
-                "active_current_b",
-                "active_current_c"
-            ]
-            entities.append(TuyaHaSwitch(device, device_manager, newentities))
-            
         for function in device.function:
             _LOGGER.info(f"add entity -> {function}")
             if device.category == "kj":

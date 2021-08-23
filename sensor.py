@@ -425,9 +425,9 @@ def _setup_entities(hass, device_ids: List):
                         ),
                     )
                 )
-            if device.category == "zndb":
+            if device.category == "zndb" or device.product_id=="aynmagfq01aq70he":
                 for phase in DPCODE_PHASE:
-                    if phase in device.status:
+                    if phase in device.status or device.product_id=="aynmagfq01aq70he":
                         entities.append(
                             TuyaHaSensor(
                                 device,
@@ -491,6 +491,14 @@ class TuyaHaSensor(TuyaHaDevice, SensorEntity):
             __value = json.loads(self.tuya_device.status.get(self._code[:7])).get(self._code[8:])
             return __value
 
+        if  self._code.startswith("phase_") and self.tuya_device.product_id=="aynmagfq01aq70he":
+            st=self.tuya_device.status.get(self._code)
+            if st is None:
+                self.tuya_device.status[self._code]=0
+                return self.tuya_device.status.get(self._code)
+            else:
+                return self.tuya_device.status.get(self._code)
+            
         __value = self.tuya_device.status.get(self._code)
         if self.tuya_device.status_range.get(self._code).type == "Integer":
             __value_range = json.loads(
