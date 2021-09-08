@@ -149,13 +149,13 @@ async def _init_tuya_sdk(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     tuya_mq.start()
     device_manager = TuyaDeviceManager(api, tuya_mq)
 
-                                
+
     device_manager = TuyaDeviceManager(api, tuya_mq)
     # Get device list
     home_manager = TuyaHomeManager(api, tuya_mq, device_manager)
     await hass.async_add_executor_job(home_manager.update_device_cache)
     hass.data[DOMAIN][TUYA_HOME_MANAGER] = home_manager
-    
+
     def on_message_custom(msg):
         _LOGGER.info(f"on_message_custom: {msg}")
         protocol = msg.get("protocol", 0)
@@ -170,7 +170,7 @@ async def _init_tuya_sdk(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     for statusItem in status:
                         for statusNum in statusItem:
                             _LOGGER.debug(f"message _update--> stsusnum {statusNum}")
-                            if statusNum == "102":                            
+                            if statusNum == "102":
                                 _LOGGER.debug(f"message _update--> updating current data")
                                 hexStatus=base64.b64decode(statusItem[statusNum]).hex()
                                 _LOGGER.debug(f"message _update--> hexStatus {hexStatus}")
@@ -193,7 +193,7 @@ async def _init_tuya_sdk(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                                 c_sub = hexStatus[8:12]
                                 _LOGGER.debug(f"message _update--> a_sub {a_sub}")
                                 _LOGGER.debug(f"message _update--> b_sub {b_sub}")
-                                _LOGGER.debug(f"message _update--> c_sub {c_sub}")                                
+                                _LOGGER.debug(f"message _update--> c_sub {c_sub}")
                                 ha_device.tuya_device.status["phase_a_voltage"]=int(a_sub,16)/10
                                 ha_device.tuya_device.status["phase_b_voltage"]=int(b_sub,16)/10
                                 ha_device.tuya_device.status["phase_c_voltage"]=int(c_sub,16)/10
@@ -212,6 +212,10 @@ async def _init_tuya_sdk(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                                 ha_device.tuya_device.status["phase_a_power"]=int(a_sub,16)/10000
                                 ha_device.tuya_device.status["phase_b_power"]=int(b_sub,16)/10000
                                 ha_device.tuya_device.status["phase_c_power"]=int(c_sub,16)/10000
+                                _LOGGER.debug(f"message _update--> {ha_device.tuya_device.status}")
+                            elif statusNum=="114":
+                                _LOGGER.debug(f"message _update--> updating power data")
+                                ha_device.tuya_device.status["forward_energy_total"]=statusItem[statusNum]/100
                                 _LOGGER.debug(f"message _update--> {ha_device.tuya_device.status}")
                     ha_device.schedule_update_ha_state()
     tuya_mq.add_message_listener(on_message_custom)
